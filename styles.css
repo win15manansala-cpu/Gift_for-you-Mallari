@@ -303,14 +303,7 @@ body.envelope-is-open .scatter-item {
     }
 
     .mobile-polaroid::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 70px;
-        background: #fff;
-        border-radius: 0 0 8px 8px;
+        display: none;
     }
 
     .mobile-polaroid .polaroid-card {
@@ -328,13 +321,15 @@ body.envelope-is-open .scatter-item {
     }
 
     .mobile-polaroid .caption {
-        position: absolute;
-        left: 16px;
-        right: 16px;
-        bottom: 10px;
+        position: static;
         color: var(--text-color);
         line-height: 1.6;
         text-align: left;
+        background: #fff;
+        padding: 10px 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     .mobile-polaroid .caption h2 {
