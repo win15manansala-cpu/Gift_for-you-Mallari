@@ -281,6 +281,49 @@ body.envelope-is-open .scatter-item {
         align-items: center;
     }
 
+    .scatter-items {
+        display: none;
+    }
+
+    .mobile-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+        width: 100%;
+    }
+
+    .mobile-gallery figure {
+        margin: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: var(--polaroid-shadow);
+    }
+
+    .mobile-gallery img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        display: block;
+        background: #eee;
+    }
+
+    .mobile-gallery figcaption {
+        font-size: 0.8rem;
+        text-align: center;
+        padding: 6px 8px;
+        color: var(--text-color);
+        background: rgba(255,255,255,0.9);
+    }
+
+    @media (orientation: landscape) {
+        .mobile-gallery {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
     /* Mobile Polaroids (Scattered Items) */
     .scatter-item {
         width: 140px;
