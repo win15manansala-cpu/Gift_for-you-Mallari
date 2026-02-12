@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const content = page1.querySelector('.content');
         if (content) {
-            const elements = Array.from(content.children).filter(el => el.tagName === 'H2' || el.tagName === 'P');
+            const elements = Array.from(content.querySelectorAll('h2, p')).slice(0, 3);
             elements.forEach(el => caption.appendChild(el.cloneNode(true)));
         }
 
