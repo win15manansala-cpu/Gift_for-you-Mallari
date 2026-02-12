@@ -177,14 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Open Envelope Action: support touch/pointer/keyboard
     function requestOpen() {
-        if (!isOpen) openEnvelope();
+        if (isOpen) return;
+        try {
+            openEnvelope();
+        } catch (err) {
+            console.error('Failed to open envelope:', err);
+        }
     }
     envelopeWrapper.addEventListener('click', requestOpen);
+    envelopeWrapper.addEventListener('pointerdown', requestOpen);
     envelopeWrapper.addEventListener('pointerup', requestOpen);
     envelopeWrapper.addEventListener('touchend', (e) => {
         e.preventDefault();
         requestOpen();
     }, { passive: false });
+    envelope.addEventListener('click', requestOpen);
+    envelope.addEventListener('pointerdown', requestOpen);
     envelopeWrapper.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
