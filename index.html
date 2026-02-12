@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Letter for You</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="scene">
+        <h1 class="header-text" id="headerText">Joseph sent you a letter</h1>
+        
+        <div class="envelope-wrapper" id="envelopeWrapper">
+            <div class="envelope" id="envelope">
+                <div class="back"></div>
+                
+                <!-- The Letter -->
+                <div class="letter" id="letter">
+                    <div class="letter-inner">
+                        <div class="page page-1 active" id="page1">
+                            <div class="paper-texture"></div>
+                            <div class="content">
+                                <h2>Hey Mallari,</h2>
+                                <p>
+                                    I know I'm super late, but happy birthday, merry Christmas, happy New Year, AND happy Valentine's Day!
+                                </p>
+                                <p>
+                                    Basically, I'm celebrating everything with you all at once. Consider this your mega greeting for all the occasions I missed. 
+                                </p>
+                                <p>
+                                    Hope you've been having an amazing start to the year, and here's to Valentine's Day being just as great! ❤️
+                                </p>
+                                <p class="signature">With love, <br>Joseph</p>
+                            </div>
+                            <div class="nav-controls">
+                                <button class="btn-next" id="nextBtn" aria-label="Go to next page">Next Page &rarr;</button>
+                            </div>
+                        </div>
+                        
+                        <div class="page page-2" id="page2" role="region" aria-label="Video Message Section">
+                            <div class="paper-texture"></div>
+                            <div class="content">
+                                <div class="video-container">
+                                    <video id="videoPlayer" width="100%" controls preload="metadata" aria-label="Special video message">
+                                        <source src="./vid.mp4" type="video/mp4">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                            </div>
+                            <div class="nav-controls">
+                                <button class="btn-prev" id="prevBtn" aria-label="Back to letter content">
+                                    <span aria-hidden="true">&larr;</span> Back
+                                </button>
+                                <button class="btn-close" id="closeBtn" aria-label="Close and exit letter">
+                                    Close Letter <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="front"></div>
+                <div class="flap" id="flap"></div>
+            </div>
+            <div class="shadow"></div>
+        </div>
+    </div>
+
+    <!-- Scattered Images -->
+    <div class="scatter-items" id="scatterItems">
+        <figure class="scatter-item" style="--i:1">
+            <img src="./pic1.jfif" alt="Memory 1">
+            <figcaption class="scatter-caption">Memory 1</figcaption>
+        </figure>
+        <figure class="scatter-item" style="--i:2">
+            <img src="./pic2.jfif" alt="Memory 2">
+            <figcaption class="scatter-caption">Memory 2</figcaption>
+        </figure>
+        <figure class="scatter-item" style="--i:3">
+            <img src="./pic3.jfif" alt="Memory 3">
+            <figcaption class="scatter-caption">Memory 3</figcaption>
+        </figure>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" aria-hidden="true">
+        <div class="lightbox-overlay" id="lightboxOverlay"></div>
+        <div class="lightbox-content">
+            <button class="lightbox-close" id="lightboxClose" aria-label="Close image">&times;</button>
+            <img id="lightboxImg" src="" alt="Full size memory">
+        </div>
+    </div>
+
+    <script src="./tests.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>
