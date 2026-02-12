@@ -1,462 +1,871 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const envelopeWrapper = document.getElementById('envelopeWrapper');
-    const envelope = document.getElementById('envelope');
-    const headerText = document.getElementById('headerText');
-    const letter = document.getElementById('letter');
-    const scatterItems = document.querySelectorAll('.scatter-item');
-    const nextBtn = document.getElementById('nextBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const closeBtn = document.getElementById('closeBtn');
-    const page1 = document.getElementById('page1');
-    const page2 = document.getElementById('page2');
-    const videoPlayer = document.getElementById('videoPlayer');
-    const scatterItemsContainer = document.getElementById('scatterItems');
-    const mobilePolaroid = document.getElementById('mobilePolaroid');
-
-    // Lightbox Elements
-    const lightbox = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightboxImg');
-    const lightboxClose = document.getElementById('lightboxClose');
-    const lightboxOverlay = document.getElementById('lightboxOverlay');
-
-    // Pagination State
-    let isOpen = false;
-    let currentPage = 1;
-    const pages = document.querySelectorAll('.page');
-    const totalPages = pages.length;
-
-    function buildMobileGallery() {
-        const isMobile = window.innerWidth <= 768;
-        const content = page1.querySelector('.content');
-        if (!isMobile || !content) return;
-
-        if (content.querySelector('.mobile-gallery')) return;
-
-        const gallery = document.createElement('div');
-        gallery.className = 'mobile-gallery';
-        gallery.setAttribute('role', 'list');
-
-        content.insertBefore(gallery, content.firstChild);
-
-        document.querySelectorAll('.scatter-item').forEach((item) => {
-            const srcEl = item.querySelector('img');
-            const captionEl = item.querySelector('.scatter-caption');
-            if (!srcEl) return;
-
-            const fig = document.createElement('figure');
-            fig.setAttribute('role', 'listitem');
-
-            const img = new Image();
-            img.src = srcEl.getAttribute('src');
-            img.alt = srcEl.getAttribute('alt') || 'Photo';
-            img.loading = 'lazy';
-            img.decoding = 'async';
-
-            const cap = document.createElement('figcaption');
-            cap.textContent = captionEl ? captionEl.textContent : img.alt;
-
-            fig.appendChild(img);
-            fig.appendChild(cap);
-            gallery.appendChild(fig);
-        });
-
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = 'none';
-        }
-    }
-
-    function teardownMobileGallery() {
-        const content = page1.querySelector('.content');
-        const gallery = content && content.querySelector('.mobile-gallery');
-        if (gallery) {
-            gallery.remove();
-        }
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = '';
-        }
-    }
-
-    function handleResponsiveGalleryToggle() {
-        if (window.innerWidth <= 768) {
-            buildMobileGallery();
-        } else {
-            teardownMobileGallery();
-        }
-    }
-
-    function buildMobilePolaroid() {
-        const isMobile = window.innerWidth <= 768;
-        if (!isMobile || !mobilePolaroid) return;
-        if (mobilePolaroid.childElementCount) return;
-
-        const fig = document.createElement('figure');
-        fig.className = 'polaroid-card';
-        fig.setAttribute('role', 'group');
-
-        const srcEl = document.querySelector('.scatter-item img');
-        const img = new Image();
-        img.src = srcEl ? srcEl.getAttribute('src') : '';
-        img.alt = srcEl ? srcEl.getAttribute('alt') : 'Photo';
-        img.loading = 'lazy';
-        img.decoding = 'async';
-
-        const caption = document.createElement('figcaption');
-        caption.className = 'caption';
-
-        const content = page1.querySelector('.content');
-        if (content) {
-            const elements = Array.from(content.children).filter(el => el.tagName === 'H2' || el.tagName === 'P');
-            elements.forEach(el => caption.appendChild(el.cloneNode(true)));
-        }
-
-        fig.appendChild(img);
-        fig.appendChild(caption);
-        mobilePolaroid.appendChild(fig);
-        mobilePolaroid.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('mobile-polaroid-mode');
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = 'none';
-        }
-    }
-
-    function teardownMobilePolaroid() {
-        if (!mobilePolaroid) return;
-        mobilePolaroid.innerHTML = '';
-        mobilePolaroid.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('mobile-polaroid-mode');
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = '';
-        }
-    }
-
-    function handleResponsivePolaroidToggle() {
-        if (window.innerWidth <= 768) {
-            buildMobilePolaroid();
-        } else {
-            teardownMobilePolaroid();
-        }
-    }
-
-    /**
-     * Paging Logic (Frontend "Backend")
-     * Handles accurate record (page) slicing and state synchronization.
-     */
-    function updatePaginationUI(targetPage) {
-        // Defensive checks: prevent out-of-range requests
-        if (targetPage < 1 || targetPage > totalPages) {
-            console.error(`Page ${targetPage} is out of bounds (1-${totalPages})`);
-            return false;
-        }
-
-        // State synchronization: hide all pages
-        pages.forEach(p => {
-            p.classList.remove('active');
-            p.scrollTop = 0; // Reset scroll position for "fresh" page view
-        });
-
-        // "Record slicing": select and show the correct page
-        const activePage = document.querySelector(`.page-${targetPage}`);
-        if (activePage) {
-            activePage.classList.add('active');
-            currentPage = targetPage;
-
-            // Page-specific side effects (e.g., video handling)
-            if (targetPage === 2) {
-                videoPlayer.play().catch(err => console.log("Autoplay prevented:", err));
-                videoPlayer.focus(); // Focus management for accessibility
-            } else {
-                videoPlayer.pause();
-                if (targetPage === 1 && isOpen) {
-                    nextBtn.focus(); // Return focus to next button
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    // Open Envelope Action
-    envelopeWrapper.addEventListener('click', () => {
-        if (!isOpen) {
-            openEnvelope();
-        }
-    });
-
-    function openEnvelope() {
-        isOpen = true;
-        currentPage = 1; // Reset to first page on open
-        updatePaginationUI(1);
-        
-        envelope.classList.add('open');
-        headerText.classList.add('hidden');
-        envelopeWrapper.classList.add('active');
-        document.body.classList.add('envelope-is-open');
-
-        handleResponsivePolaroidToggle();
-
-        // Randomize scatter items with sophisticated algorithm
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const isMobile = vw <= 768;
-        const polaroidWidth = isMobile ? (vw <= 400 ? 110 : 140) : (vw > 1024 ? 250 : 200);
-        const polaroidHeight = polaroidWidth * 1.2;
-        
-        // Critical areas to avoid (centered letter)
-        const letterWidth = isMobile ? vw * 0.95 : Math.min(vw * 0.9, 700);
-        const letterHeight = isMobile ? vh * 0.9 : Math.min(vh * 0.85, 650);
-        const safeZone = {
-            left: (vw - letterWidth) / 2 - 50,
-            right: (vw + letterWidth) / 2 + 50,
-            top: (vh - letterHeight) / 2 - 50,
-            bottom: (vh + letterHeight) / 2 + 50
-        };
-
-        const placedPolaroids = [];
-
-        scatterItems.forEach((item, index) => {
-            let x, y, rotate;
-            let attempts = 0;
-            const maxAttempts = 50;
-            let isValid = false;
-
-            while (!isValid && attempts < maxAttempts) {
-                attempts++;
-                
-                // Randomly pick an edge (0: top, 1: right, 2: bottom, 3: left)
-                const edge = Math.floor(Math.random() * 4);
-                const margin = 100;
-
-                if (edge === 0) { // Top
-                    x = Math.random() * vw;
-                    y = Math.random() * (vh * 0.25);
-                } else if (edge === 1) { // Right
-                    x = vw - Math.random() * (vw * 0.25);
-                    y = Math.random() * vh;
-                } else if (edge === 2) { // Bottom
-                    x = Math.random() * vw;
-                    y = vh - Math.random() * (vh * 0.25);
-                } else { // Left
-                    x = Math.random() * (vw * 0.25);
-                    y = Math.random() * vh;
-                }
-
-                // Keep away from viewport edges
-                x = Math.max(polaroidWidth/2 + 20, Math.min(vw - polaroidWidth/2 - 20, x));
-                y = Math.max(polaroidHeight/2 + 20, Math.min(vh - polaroidHeight/2 - 20, y));
-
-                // Collision Detection: Avoid Letter Safe Zone
-                const inSafeZone = x > safeZone.left && x < safeZone.right && 
-                                  y > safeZone.top && y < safeZone.bottom;
-                
-                // Collision Detection: Avoid other polaroids
-                const tooClose = placedPolaroids.some(p => {
-                    const dx = p.x - x;
-                    const dy = p.y - y;
-                    return Math.sqrt(dx*dx + dy*dy) < polaroidWidth * 0.8;
-                });
-
-                if (!inSafeZone && !tooClose) {
-                    isValid = true;
-                }
-            }
-
-            // Fallback positioning if no valid spot found
-            if (!isValid) {
-                const angle = (index / scatterItems.length) * Math.PI * 2;
-                const dist = Math.min(vw, vh) * 0.4;
-                x = vw/2 + Math.cos(angle) * dist;
-                y = vh/2 + Math.sin(angle) * dist;
-            }
-
-            rotate = Math.random() * 30 - 15; // -15 to +15 degrees
-            placedPolaroids.push({x, y});
-
-            item.style.left = `${x}px`;
-            item.style.top = `${y}px`;
-            item.style.opacity = '1'; // Explicitly set opacity to 1 on open
-            item.style.transform = `translate(-50%, -50%) rotate(${rotate}deg) scale(1)`;
-            item.style.transitionDelay = `${0.3 + index * 0.2}s`;
-        });
-
-    // Sequence: Flap opens (0s) -> Letter slides out (0.2s) -> Letter expands (0.8s)
-    setTimeout(() => {
-        envelope.classList.add('full-view');
-        // Recalculate safe zone for full-view to prevent overlap on desktop
-        const vw2 = window.innerWidth;
-        const vh2 = window.innerHeight;
-        const isMobile2 = vw2 <= 768;
-        const fullLetterWidth = isMobile2 ? vw2 * 0.95 : Math.min(vw2 * 0.9, 700);
-        const fullLetterHeight = isMobile2 ? vh2 * 0.9 : Math.min(vh2 * 0.85, 650);
-        const fullSafeZone = {
-            left: (vw2 - fullLetterWidth) / 2 - 40,
-            right: (vw2 + fullLetterWidth) / 2 + 40,
-            top: (vh2 - fullLetterHeight) / 2 - 40,
-            bottom: (vh2 + fullLetterHeight) / 2 + 80
-        };
-        scatterItems.forEach(item => {
-            const rect = item.getBoundingClientRect();
-            let x = rect.left + rect.width / 2;
-            let y = rect.top + rect.height / 2;
-            const inZone = x > fullSafeZone.left && x < fullSafeZone.right &&
-                           y > fullSafeZone.top && y < fullSafeZone.bottom;
-            if (inZone) {
-                const cx = vw2 / 2;
-                const cy = vh2 / 2;
-                const dx = x - cx;
-                const dy = y - cy;
-                const angle = Math.atan2(dy, dx);
-                const radius = Math.max(fullLetterWidth, fullLetterHeight) / 2 + 140;
-                x = cx + Math.cos(angle) * radius;
-                y = cy + Math.sin(angle) * radius;
-                item.style.left = `${x}px`;
-                item.style.top = `${y}px`;
-            }
-        });
-        // Force reflow/re-render of images when opening
-        scatterItems.forEach(item => {
-            const img = item.querySelector('img');
-            if (img) {
-                const currentSrc = img.src;
-                img.src = currentSrc;
-            }
-        });
-    }, 800);
+:root {
+    --env-color: #d4a373;
+    --env-dark: #bc8a5f;
+    --env-shadow: rgba(0,0,0,0.2);
+    --letter-bg: #fdfbf7;
+    --text-color: #4a4a4a;
+    --accent: #e76f51;
+    --anim-speed: 0.6s;
+    --ease-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Polaroid System Custom Properties */
+    --polaroid-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    --polaroid-shadow-hover: 0 8px 16px rgba(0,0,0,0.25);
+    --polaroid-border: 15px;
+    --polaroid-aspect-ratio: 1 / 1.2;
+    --modal-bg: rgba(0,0,0,0.8);
 }
 
-    function repositionScatterOnResize() {
-        if (!document.body.classList.contains('envelope-is-open')) return;
-        // Rerun open positioning lightly by pushing overlapping items outward
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const isMobile = vw <= 768;
-        const letterWidth = isMobile ? vw * 0.95 : Math.min(vw * 0.9, 700);
-        const letterHeight = isMobile ? vh * 0.9 : Math.min(vh * 0.85, 650);
-        const safeZone = {
-            left: (vw - letterWidth) / 2 - 40,
-            right: (vw + letterWidth) / 2 + 40,
-            top: (vh - letterHeight) / 2 - 40,
-            bottom: (vh + letterHeight) / 2 + 80
-        };
-        scatterItems.forEach(item => {
-            const rect = item.getBoundingClientRect();
-            let x = rect.left + rect.width / 2;
-            let y = rect.top + rect.height / 2;
-            const inZone = x > safeZone.left && x < safeZone.right &&
-                           y > safeZone.top && y < safeZone.bottom;
-            if (inZone) {
-                const cx = vw / 2;
-                const cy = vh / 2;
-                const angle = Math.atan2(y - cy, x - cx);
-                const radius = Math.max(letterWidth, letterHeight) / 2 + 140;
-                x = cx + Math.cos(angle) * radius;
-                y = cy + Math.sin(angle) * radius;
-                item.style.left = `${x}px`;
-                item.style.top = `${y}px`;
-            }
-        });
-        handleResponsivePolaroidToggle();
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Georgia', serif;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden; /* Prevent scrollbars during animation */
+}
+
+.scene {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px;
+}
+
+.header-text {
+    position: absolute;
+    top: 20%;
+    font-size: 2rem;
+    color: var(--text-color);
+    transition: opacity 0.5s ease;
+    z-index: 100;
+    text-align: center;
+    width: 100%;
+}
+
+.header-text.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Envelope Container */
+.envelope-wrapper {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.5s ease;
+}
+
+.envelope-wrapper:not(.active):hover {
+    transform: scale(1.02);
+}
+
+.envelope {
+    position: relative;
+    width: 320px;
+    height: 220px;
+    background-color: var(--env-dark);
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 10px 20px var(--env-shadow);
+    z-index: 10;
+}
+
+/* Envelope Parts */
+.front {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 160px 140px 160px;
+    border-color: transparent transparent var(--env-color) transparent;
+    z-index: 30;
+    border-radius: 0 0 10px 10px;
+    pointer-events: none;
+}
+
+.back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--env-dark);
+    border-radius: 0 0 10px 10px;
+    z-index: 1;
+}
+
+.flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 110px 160px 0 160px;
+    border-color: var(--env-color) transparent transparent transparent;
+    z-index: 40;
+    transform-origin: top;
+    transition: transform var(--anim-speed) ease, z-index 0s linear var(--anim-speed);
+}
+
+.envelope.open .flap {
+    transform: rotateX(180deg);
+    z-index: 1; /* Move behind letter when open */
+    transition: transform var(--anim-speed) ease, z-index 0s linear 0s;
+}
+
+.shadow {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 20px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 70%);
+    border-radius: 50%;
+    transition: all 0.5s ease;
+    z-index: 0;
+}
+
+.envelope-wrapper.active .shadow {
+    width: 200px;
+    opacity: 0.5;
+}
+
+/* Scattered Items */
+.scatter-items {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 300; 
+    pointer-events: none; 
+    overflow: hidden;
+}
+
+.scatter-item {
+    position: absolute;
+    width: 250px;
+    height: 300px; /* 1:1.2 ratio for 250 width */
+    background: #fff;
+    padding: var(--polaroid-border) var(--polaroid-border) 45px var(--polaroid-border);
+    box-shadow: var(--polaroid-shadow);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+    transition: transform 0.6s var(--ease-out), opacity 0.6s ease, box-shadow 0.3s ease;
+    will-change: transform, opacity;
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.scatter-item::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 45px;
+    background: white;
+}
+
+.scatter-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #eee;
+}
+
+.scatter-item:hover {
+    transform: translate(-50%, -50%) scale(1.05) !important;
+    box-shadow: var(--polaroid-shadow-hover);
+    z-index: 100;
+}
+
+body.envelope-is-open .scatter-item {
+    opacity: 1;
+}
+
+/* Mobile-First Responsive Design & Touch Optimizations */
+@media (max-width: 768px) {
+    :root {
+        --polaroid-border: 10px;
     }
 
-    window.addEventListener('resize', repositionScatterOnResize, { passive: true });
-    window.addEventListener('orientationchange', repositionScatterOnResize);
-    window.addEventListener('resize', handleResponsivePolaroidToggle, { passive: true });
-    window.addEventListener('orientationchange', handleResponsivePolaroidToggle);
-    handleResponsivePolaroidToggle();
-
-    // Navigation Events
-    nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
-        updatePaginationUI(currentPage + 1);
-    });
-
-    prevBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        updatePaginationUI(currentPage - 1);
-    });
-
-    // Close Action
-    closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeEnvelope();
-    });
-
-    function closeEnvelope() {
-        videoPlayer.pause();
-        videoPlayer.currentTime = 0;
-
-        envelope.classList.remove('full-view');
-
-        setTimeout(() => {
-            envelope.classList.remove('open');
-            headerText.classList.remove('hidden');
-            envelopeWrapper.classList.remove('active');
-            document.body.classList.remove('envelope-is-open');
-            isOpen = false;
-            
-            // Reset pagination state for next open
-            updatePaginationUI(1);
-
-            scatterItems.forEach(item => {
-                item.style.transform = 'translate(-50%, -50%) scale(0.3) rotate(0deg)';
-                item.style.opacity = ''; // Remove inline style to allow CSS classes to take over
-                item.style.transitionDelay = '0s';
-            });
-
-        }, 800);
+    body {
+        overflow-y: auto; /* Allow scrolling on mobile if needed */
+        align-items: flex-start;
+        padding-top: 20px;
     }
 
-    // Lightbox Functionality
-    function openLightboxModal(src) {
-        // Ensure the image is fully loaded before showing lightbox if possible
-        const tempImg = new Image();
-        tempImg.onload = () => {
-            lightboxImg.src = src;
-            lightbox.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden'; // Ensure no scroll
-        };
-        tempImg.src = src;
-        
-        // Add caption if needed
-        const currentItem = Array.from(scatterItems).find(item => item.querySelector('img').src.includes(src.split('/').pop()));
-        if (currentItem) {
-            const caption = currentItem.querySelector('.scatter-caption').textContent;
-            lightboxImg.alt = caption;
+    .scene {
+        height: auto;
+        min-height: 100vh;
+        padding: 20px 10px;
+    }
+
+    .header-text {
+        position: relative;
+        top: 0;
+        font-size: 1.5rem;
+        margin-bottom: 30px;
+        padding: 0 15px;
+    }
+
+    /* Fluid Envelope */
+    .envelope {
+        width: 280px;
+        height: 190px;
+    }
+
+    .front {
+        border-width: 0 140px 120px 140px;
+    }
+
+    .flap {
+        border-width: 100px 140px 0 140px;
+    }
+
+    .shadow {
+        width: 260px;
+    }
+
+    .letter {
+        transition: transform 0.8s var(--ease-out), width 0.8s var(--ease-out), height 0.8s var(--ease-out);
+    }
+
+    /* Mobile Letter Full View */
+    .envelope.open.full-view .letter {
+        width: 95vw;
+        height: 90vh;
+        border-radius: 12px;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .content {
+        padding: 25px 20px;
+        font-size: 1rem;
+    }
+
+    .content h2 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+    }
+
+    .nav-controls {
+        padding: 0 20px 25px;
+        gap: 10px;
+    }
+
+    button {
+        padding: 14px 20px; /* Larger tap target */
+        font-size: 1rem;
+        min-height: 48px; /* Meet accessibility standards */
+        width: auto;
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .scatter-items {
+        display: none;
+    }
+
+    .mobile-polaroid {
+        width: min(95vw, 420px);
+        margin: 0 auto 20px;
+        position: relative;
+        padding: var(--polaroid-border) var(--polaroid-border) 70px var(--polaroid-border);
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+        transform: translateZ(0);
+    }
+
+    .mobile-polaroid::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 70px;
+        background: #fff;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .mobile-polaroid .polaroid-card {
+        margin: 0;
+    }
+
+    .mobile-polaroid img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 3 / 4;
+        object-fit: cover;
+        display: block;
+        background: #eee;
+        border-radius: 4px;
+    }
+
+    .mobile-polaroid .caption {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 10px;
+        color: var(--text-color);
+        line-height: 1.6;
+        text-align: left;
+    }
+
+    .mobile-polaroid .caption h2 {
+        margin: 0 0 6px 0;
+        font-size: 1.4rem;
+        color: var(--accent);
+    }
+
+    .mobile-polaroid .caption p {
+        margin: 0 0 4px 0;
+        font-size: 0.95rem;
+    }
+
+    .mobile-polaroid-mode .letter .page-1 .content {
+        display: none;
+    }
+
+    .mobile-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+        width: 100%;
+    }
+
+    .mobile-gallery figure {
+        margin: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: var(--polaroid-shadow);
+    }
+
+    .mobile-gallery img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        display: block;
+        background: #eee;
+    }
+
+    .mobile-gallery figcaption {
+        font-size: 0.8rem;
+        text-align: center;
+        padding: 6px 8px;
+        color: var(--text-color);
+        background: rgba(255,255,255,0.9);
+    }
+
+    @media (orientation: landscape) {
+        .mobile-gallery {
+            grid-template-columns: repeat(4, 1fr);
         }
     }
 
-    function closeLightboxModal() {
-        lightbox.setAttribute('aria-hidden', 'true');
-        setTimeout(() => {
-            lightboxImg.src = '';
-        }, 300);
+    /* Mobile Polaroids (Scattered Items) */
+    .scatter-item {
+        width: 140px;
+        height: 168px;
+        padding: var(--polaroid-border) var(--polaroid-border) 30px var(--polaroid-border);
     }
 
-    // Scatter Item Click
-    scatterItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent bubbling
-            const img = item.querySelector('img');
-            if (img) {
-                openLightboxModal(img.src);
-            }
-        });
-    });
+    .scatter-item::after {
+        height: 30px;
+    }
 
-    // Lightbox Controls
-    lightboxClose.addEventListener('click', closeLightboxModal);
-    lightboxOverlay.addEventListener('click', closeLightboxModal);
+    .scatter-caption {
+        font-size: 0.6rem;
+    }
+}
 
-    // Escape Key Support
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (lightbox.getAttribute('aria-hidden') === 'false') {
-                closeLightboxModal();
-            }
-        }
-    });
+/* Extra Small Devices (320px - 400px) */
+@media (max-width: 400px) {
+    .envelope {
+        width: 240px;
+        height: 160px;
+    }
 
-    // Prevent clicks inside the letter from bubbling
-    letter.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-});
+    .front {
+        border-width: 0 120px 100px 120px;
+    }
+
+    .flap {
+        border-width: 80px 120px 0 120px;
+    }
+
+    .content h2 {
+        font-size: 1.8rem;
+    }
+
+    .scatter-item {
+        width: 110px;
+        height: 132px;
+    }
+}
+
+/* Touch Device Specific Adjustments */
+@media (hover: none) {
+    .envelope-wrapper:not(.active):hover {
+        transform: none;
+    }
+
+    .scatter-item:hover {
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+
+    .scatter-caption {
+        opacity: 1; /* Always show captions on touch devices */
+        bottom: 2px;
+    }
+}
+
+/* The Letter */
+.letter {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 290px;
+    height: 190px;
+    background-color: var(--letter-bg);
+    z-index: 20; 
+    transition: all 1s ease-in-out;
+    transform-origin: center;
+    overflow: hidden; /* Hide overflow when closed/small */
+    padding: 0; 
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.05); 
+    border-radius: 2px;
+    opacity: 0; 
+    visibility: hidden;
+}
+
+/* State: Letter Out */
+.envelope.open .letter {
+    transform: translate(-50%, -150px);
+    z-index: 50; 
+    transition-delay: 0.2s;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    opacity: 1; 
+    visibility: visible;
+}
+
+/* State: Letter Full View (Reading Mode) */
+.envelope.open.full-view .letter {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    width: min(90vw, 700px);
+    height: min(85vh, 650px);
+    z-index: 200; 
+    transition: all 0.8s var(--ease-out), box-shadow 0.3s ease;
+    border-radius: 16px;
+    overflow: hidden; /* Prevent scrolling of both pages together */
+    padding: 0;
+    opacity: 1;
+    visibility: visible;
+}
+
+.envelope.open.full-view .letter:hover {
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+}
+
+.letter-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    transform: translateY(20px);
+    overflow-y: auto; /* Individual pages can scroll if content is long */
+}
+
+.page.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    z-index: 1;
+}
+
+.content {
+    padding: 40px 60px;
+    flex: 1;
+    text-align: left;
+    color: var(--text-color);
+    line-height: 1.8;
+    font-size: 1.15rem;
+    background: linear-gradient(to bottom, #ffffff 0%, #fdfbf7 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+.content h2 {
+    font-size: 2.8rem;
+    margin-bottom: 25px;
+    color: var(--accent);
+    font-family: 'Great Vibes', cursive;
+    letter-spacing: 1px;
+    border-bottom: 2px solid rgba(231, 111, 81, 0.1);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+.content p {
+    margin-bottom: 20px;
+    font-family: 'Georgia', serif;
+}
+
+.signature {
+    margin-top: 40px;
+    font-size: 1.3rem;
+    color: var(--text-color);
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding-top: 20px;
+}
+
+.nav-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px; /* Added gap for multiple buttons */
+    padding: 0 60px 40px;
+    background: #fdfbf7;
+}
+
+.btn-prev {
+    background-color: transparent;
+    color: var(--text-color);
+    border: 2px solid #ddd;
+    box-shadow: none;
+}
+
+.btn-prev:hover {
+    background-color: #f0f0f0;
+    border-color: #ccc;
+    color: var(--accent);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+button {
+    padding: 12px 30px;
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 15px rgba(231, 111, 81, 0.3);
+}
+
+button:hover {
+    background-color: #e85d04;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 111, 81, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Video Section Refinement */
+.page-2 {
+    overflow: hidden; /* Eliminate internal scrolling */
+    background: #ffffff; /* Pure white background */
+}
+
+.page-2 .paper-texture {
+    opacity: 0.05; /* Very subtle texture for white background */
+}
+
+.page-2 .content {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    background: #ffffff;
+}
+
+.video-container {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.video-container video {
+    max-width: 100%;
+    max-height: calc(100% - 80px); /* Leave room for controls */
+    width: auto;
+    height: auto;
+    display: block;
+    aspect-ratio: auto;
+    object-fit: contain;
+    transition: transform 0.5s var(--ease-out);
+}
+
+.page-2 .nav-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px 30px;
+    background: linear-gradient(to top, rgba(255,255,255,0.9) 0%, transparent 100%);
+    z-index: 10;
+    justify-content: space-between;
+    margin: 0;
+}
+
+/* Accessible & Touch-Friendly Buttons */
+.page-2 button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: var(--text-color);
+    box-shadow: none;
+}
+
+.page-2 button:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.page-2 button:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Responsive Breakpoints for Video */
+@media (max-width: 768px) {
+    .page-2 .nav-controls {
+        padding: 10px 15px;
+    }
+    
+    .page-2 button {
+        font-size: 0.9rem;
+        padding: 8px 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .video-container video {
+        max-height: calc(100% - 60px);
+    }
+}
+
+/* Mobile Navigation Controls Overlay */
+@media (max-width: 768px) {
+    .nav-controls {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 15px 20px;
+        background: rgba(253, 251, 247, 0.95);
+        backdrop-filter: blur(5px);
+        border-top: 1px solid rgba(0,0,0,0.05);
+        z-index: 10;
+        margin-top: auto;
+    }
+}
+
+/* Scatter Item Captions */
+.scatter-caption {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    right: 5px;
+    background: rgba(255,255,255,0.9);
+    color: var(--text-color);
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    text-align: center;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.scatter-item:hover .scatter-caption {
+    opacity: 1;
+}
+
+/* Lightbox Styles */
+.lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.lightbox[aria-hidden="false"] {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lightbox-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-bg);
+    backdrop-filter: blur(5px);
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    z-index: 1001;
+    transform: translate(-50%, -50%) scale(0.3);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transition: transform 0.6s var(--ease-out);
+    background: #fff;
+    padding: var(--polaroid-border) var(--polaroid-border) 60px var(--polaroid-border);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.lightbox[aria-hidden="false"] .lightbox-content {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 70vh;
+    display: block;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -40px;
+    right: -10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 10px;
+    line-height: 1;
+}
+
+.lightbox-close:hover {
+    color: var(--accent);
+    background: none;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .envelope {
+        transform: scale(0.8);
+    }
+    
+    .envelope.open.full-view .letter {
+        width: 95vw;
+        height: 70vh;
+    }
+    
+    /* Adjust scatter items for mobile to stay closer */
+    .envelope.open .scatter-item:nth-child(1) {
+        transform: translate(-100px, -150px) rotate(-10deg) scale(0.8);
+    }
+    .envelope.open .scatter-item:nth-child(2) {
+        transform: translate(100px, -150px) rotate(10deg) scale(0.8);
+    }
+    .envelope.open .scatter-item:nth-child(3) {
+        transform: translate(0px, 180px) rotate(5deg) scale(0.8);
+    }
+}
+
+/* Paper Texture Effect */
+.paper-texture {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Desktop readability refinements */
+@media (min-width: 1024px) {
+    .content {
+        font-size: 1.2rem;
+        line-height: 1.9;
+        padding: 45px 60px;
+    }
+    .content h2 {
+        font-size: 3rem;
+        margin-bottom: 22px;
+    }
+    .nav-controls {
+        padding: 0 50px 35px;
+    }
+}
