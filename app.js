@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const page2 = document.getElementById('page2');
     const videoPlayer = document.getElementById('videoPlayer');
     const scatterItemsContainer = document.getElementById('scatterItems');
+    const mobilePolaroid = document.getElementById('mobilePolaroid');
 
     // Lightbox Elements
     const lightbox = document.getElementById('lightbox');
@@ -83,6 +84,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function buildMobilePolaroid() {
+        const isMobile = window.innerWidth <= 768;
+        if (!isMobile || !mobilePolaroid) return;
+        if (mobilePolaroid.childElementCount) return;
+
+        const fig = document.createElement('figure');
+        fig.className = 'polaroid-card';
+        fig.setAttribute('role', 'group');
+
+        const srcEl = document.querySelector('.scatter-item img');
+        const img = new Image();
+        img.src = srcEl ? srcEl.getAttribute('src') : '';
+        img.alt = srcEl ? srcEl.getAttribute('alt') : 'Photo';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+
+        const caption = document.createElement('figcaption');
+        caption.className = 'caption';
+
+        const content = page1.querySelector('.content');
+        if (content) {
+            const elements = Array.from(content.children).filter(el => el.tagName === 'H2' || el.tagName === 'P');
+            elements.forEach(el => caption.appendChild(el.cloneNode(true)));
+        }
+
+        fig.appendChild(img);
+        fig.appendChild(caption);
+        mobilePolaroid.appendChild(fig);
+        mobilePolaroid.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('mobile-polaroid-mode');
+        if (scatterItemsContainer) {
+            scatterItemsContainer.style.display = 'none';
+        }
+    }
+
+    function teardownMobilePolaroid() {
+        if (!mobilePolaroid) return;
+        mobilePolaroid.innerHTML = '';
+        mobilePolaroid.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('mobile-polaroid-mode');
+        if (scatterItemsContainer) {
+            scatterItemsContainer.style.display = '';
+        }
+    }
+
+    function handleResponsivePolaroidToggle() {
+        if (window.innerWidth <= 768) {
+            buildMobilePolaroid();
+        } else {
+            teardownMobilePolaroid();
+        }
+    }
+
     /**
      * Paging Logic (Frontend "Backend")
      * Handles accurate record (page) slicing and state synchronization.
@@ -138,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         envelopeWrapper.classList.add('active');
         document.body.classList.add('envelope-is-open');
 
-        handleResponsiveGalleryToggle();
+        handleResponsivePolaroidToggle();
 
         // Randomize scatter items with sophisticated algorithm
         const vw = window.innerWidth;
@@ -227,6 +281,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sequence: Flap opens (0s) -> Letter slides out (0.2s) -> Letter expands (0.8s)
     setTimeout(() => {
         envelope.classList.add('full-view');
+        // Recalculate safe zone for full-view to prevent overlap on desktop
+        const vw2 = window.innerWidth;
+        const vh2 = window.innerHeight;
+        const isMobile2 = vw2 <= 768;
+        const fullLetterWidth = isMobile2 ? vw2 * 0.95 : Math.min(vw2 * 0.9, 700);
+        const fullLetterHeight = isMobile2 ? vh2 * 0.9 : Math.min(vh2 * 0.85, 650);
+        const fullSafeZone = {
+            left: (vw2 - fullLetterWidth) / 2 - 40,
+            right: (vw2 + fullLetterWidth) / 2 + 40,
+            top: (vh2 - fullLetterHeight) / 2 - 40,
+            bottom: (vh2 + fullLetterHeight) / 2 + 80
+        };
+        scatterItems.forEach(item => {
+            const rect = item.getBoundingClientRect();
+            let x = rect.left + rect.width / 2;
+            let y = rect.top + rect.height / 2;
+            const inZone = x > fullSafeZone.left && x < fullSafeZone.right &&
+                           y > fullSafeZone.top && y < fullSafeZone.bottom;
+            if (inZone) {
+                const cx = vw2 / 2;
+                const cy = vh2 / 2;
+                const dx = x - cx;
+                const dy = y - cy;
+                const angle = Math.atan2(dy, dx);
+                const radius = Math.max(fullLetterWidth, fullLetterHeight) / 2 + 140;
+                x = cx + Math.cos(angle) * radius;
+                y = cy + Math.sin(angle) * radius;
+                item.style.left = `${x}px`;
+                item.style.top = `${y}px`;
+            }
+        });
         // Force reflow/re-render of images when opening
         scatterItems.forEach(item => {
             const img = item.querySelector('img');
@@ -238,8 +323,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 800);
 }
 
-    window.addEventListener('resize', handleResponsiveGalleryToggle, { passive: true });
-    window.addEventListener('orientationchange', handleResponsiveGalleryToggle);
+    function repositionScatterOnResize() {
+        if (!document.body.classList.contains('envelope-is-open')) return;
+        // Rerun open positioning lightly by pushing overlapping items outward
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isMobile = vw <= 768;
+        const letterWidth = isMobile ? vw * 0.95 : Math.min(vw * 0.9, 700);
+        const letterHeight = isMobile ? vh * 0.9 : Math.min(vh * 0.85, 650);
+        const safeZone = {
+            left: (vw - letterWidth) / 2 - 40,
+            right: (vw + letterWidth) / 2 + 40,
+            top: (vh - letterHeight) / 2 - 40,
+            bottom: (vh + letterHeight) / 2 + 80
+        };
+        scatterItems.forEach(item => {
+            const rect = item.getBoundingClientRect();
+            let x = rect.left + rect.width / 2;
+            let y = rect.top + rect.height / 2;
+            const inZone = x > safeZone.left && x < safeZone.right &&
+                           y > safeZone.top && y < safeZone.bottom;
+            if (inZone) {
+                const cx = vw / 2;
+                const cy = vh / 2;
+                const angle = Math.atan2(y - cy, x - cx);
+                const radius = Math.max(letterWidth, letterHeight) / 2 + 140;
+                x = cx + Math.cos(angle) * radius;
+                y = cy + Math.sin(angle) * radius;
+                item.style.left = `${x}px`;
+                item.style.top = `${y}px`;
+            }
+        });
+        handleResponsivePolaroidToggle();
+    }
+
+    window.addEventListener('resize', repositionScatterOnResize, { passive: true });
+    window.addEventListener('orientationchange', repositionScatterOnResize);
+    window.addEventListener('resize', handleResponsivePolaroidToggle, { passive: true });
+    window.addEventListener('orientationchange', handleResponsivePolaroidToggle);
+    handleResponsivePolaroidToggle();
 
     // Navigation Events
     nextBtn.addEventListener('click', (e) => {
