@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const page1 = document.getElementById('page1');
     const page2 = document.getElementById('page2');
     const videoPlayer = document.getElementById('videoPlayer');
-    const scatterItemsContainer = document.getElementById('scatterItems');
-    const mobilePolaroid = document.getElementById('mobilePolaroid');
 
     // Lightbox Elements
     const lightbox = document.getElementById('lightbox');
@@ -24,118 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     const pages = document.querySelectorAll('.page');
     const totalPages = pages.length;
-
-    function buildMobileGallery() {
-        const isMobile = window.innerWidth <= 768;
-        const content = page1.querySelector('.content');
-        if (!isMobile || !content) return;
-
-        if (content.querySelector('.mobile-gallery')) return;
-
-        const gallery = document.createElement('div');
-        gallery.className = 'mobile-gallery';
-        gallery.setAttribute('role', 'list');
-
-        content.insertBefore(gallery, content.firstChild);
-
-        document.querySelectorAll('.scatter-item').forEach((item) => {
-            const srcEl = item.querySelector('img');
-            const captionEl = item.querySelector('.scatter-caption');
-            if (!srcEl) return;
-
-            const fig = document.createElement('figure');
-            fig.setAttribute('role', 'listitem');
-
-            const img = new Image();
-            img.src = srcEl.getAttribute('src');
-            img.alt = srcEl.getAttribute('alt') || 'Photo';
-            img.loading = 'lazy';
-            img.decoding = 'async';
-
-            const cap = document.createElement('figcaption');
-            cap.textContent = captionEl ? captionEl.textContent : img.alt;
-
-            fig.appendChild(img);
-            fig.appendChild(cap);
-            gallery.appendChild(fig);
-        });
-
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = 'none';
-        }
-    }
-
-    function teardownMobileGallery() {
-        const content = page1.querySelector('.content');
-        const gallery = content && content.querySelector('.mobile-gallery');
-        if (gallery) {
-            gallery.remove();
-        }
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = '';
-        }
-    }
-
-    function handleResponsiveGalleryToggle() {
-        if (window.innerWidth <= 768) {
-            buildMobileGallery();
-        } else {
-            teardownMobileGallery();
-        }
-    }
-
-    function buildMobilePolaroid() {
-        const isMobile = window.innerWidth <= 768;
-        if (!isMobile || !mobilePolaroid) return;
-        if (mobilePolaroid.childElementCount) return;
-
-        const fig = document.createElement('figure');
-        fig.className = 'polaroid-card';
-        fig.setAttribute('role', 'group');
-
-        const srcEl = document.querySelector('.scatter-item img');
-        const img = new Image();
-        img.src = srcEl ? srcEl.getAttribute('src') : '';
-        img.alt = srcEl ? srcEl.getAttribute('alt') : 'Photo';
-        img.loading = 'lazy';
-        img.decoding = 'async';
-
-        const caption = document.createElement('figcaption');
-        caption.className = 'caption';
-
-        const content = page1.querySelector('.content');
-        if (content) {
-            const elements = Array.from(content.querySelectorAll('h2, p')).slice(0, 3);
-            elements.forEach(el => caption.appendChild(el.cloneNode(true)));
-        }
-
-        fig.appendChild(img);
-        fig.appendChild(caption);
-        mobilePolaroid.appendChild(fig);
-        mobilePolaroid.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('mobile-polaroid-mode');
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = 'none';
-        }
-    }
-
-    function teardownMobilePolaroid() {
-        if (!mobilePolaroid) return;
-        mobilePolaroid.innerHTML = '';
-        mobilePolaroid.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('mobile-polaroid-mode');
-        if (scatterItemsContainer) {
-            scatterItemsContainer.style.display = '';
-        }
-    }
-
-    function handleResponsivePolaroidToggle() {
-        if (window.innerWidth <= 768) {
-            buildMobilePolaroid();
-        } else {
-            teardownMobilePolaroid();
-        }
-    }
 
     /**
      * Paging Logic (Frontend "Backend")
@@ -175,28 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // Open Envelope Action: support touch/pointer/keyboard
-    function requestOpen() {
-        if (isOpen) return;
-        try {
+    // Open Envelope Action
+    envelopeWrapper.addEventListener('click', () => {
+        if (!isOpen) {
             openEnvelope();
-        } catch (err) {
-            console.error('Failed to open envelope:', err);
-        }
-    }
-    envelopeWrapper.addEventListener('click', requestOpen);
-    envelopeWrapper.addEventListener('pointerdown', requestOpen);
-    envelopeWrapper.addEventListener('pointerup', requestOpen);
-    envelopeWrapper.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        requestOpen();
-    }, { passive: false });
-    envelope.addEventListener('click', requestOpen);
-    envelope.addEventListener('pointerdown', requestOpen);
-    envelopeWrapper.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            requestOpen();
         }
     });
 
@@ -209,8 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         headerText.classList.add('hidden');
         envelopeWrapper.classList.add('active');
         document.body.classList.add('envelope-is-open');
-
-        handleResponsivePolaroidToggle();
 
         // Randomize scatter items with sophisticated algorithm
         const vw = window.innerWidth;
@@ -299,37 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sequence: Flap opens (0s) -> Letter slides out (0.2s) -> Letter expands (0.8s)
     setTimeout(() => {
         envelope.classList.add('full-view');
-        // Recalculate safe zone for full-view to prevent overlap on desktop
-        const vw2 = window.innerWidth;
-        const vh2 = window.innerHeight;
-        const isMobile2 = vw2 <= 768;
-        const fullLetterWidth = isMobile2 ? vw2 * 0.95 : Math.min(vw2 * 0.9, 700);
-        const fullLetterHeight = isMobile2 ? vh2 * 0.9 : Math.min(vh2 * 0.85, 650);
-        const fullSafeZone = {
-            left: (vw2 - fullLetterWidth) / 2 - 40,
-            right: (vw2 + fullLetterWidth) / 2 + 40,
-            top: (vh2 - fullLetterHeight) / 2 - 40,
-            bottom: (vh2 + fullLetterHeight) / 2 + 80
-        };
-        scatterItems.forEach(item => {
-            const rect = item.getBoundingClientRect();
-            let x = rect.left + rect.width / 2;
-            let y = rect.top + rect.height / 2;
-            const inZone = x > fullSafeZone.left && x < fullSafeZone.right &&
-                           y > fullSafeZone.top && y < fullSafeZone.bottom;
-            if (inZone) {
-                const cx = vw2 / 2;
-                const cy = vh2 / 2;
-                const dx = x - cx;
-                const dy = y - cy;
-                const angle = Math.atan2(dy, dx);
-                const radius = Math.max(fullLetterWidth, fullLetterHeight) / 2 + 140;
-                x = cx + Math.cos(angle) * radius;
-                y = cy + Math.sin(angle) * radius;
-                item.style.left = `${x}px`;
-                item.style.top = `${y}px`;
-            }
-        });
         // Force reflow/re-render of images when opening
         scatterItems.forEach(item => {
             const img = item.querySelector('img');
@@ -340,46 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, 800);
 }
-
-    function repositionScatterOnResize() {
-        if (!document.body.classList.contains('envelope-is-open')) return;
-        // Rerun open positioning lightly by pushing overlapping items outward
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const isMobile = vw <= 768;
-        const letterWidth = isMobile ? vw * 0.95 : Math.min(vw * 0.9, 700);
-        const letterHeight = isMobile ? vh * 0.9 : Math.min(vh * 0.85, 650);
-        const safeZone = {
-            left: (vw - letterWidth) / 2 - 40,
-            right: (vw + letterWidth) / 2 + 40,
-            top: (vh - letterHeight) / 2 - 40,
-            bottom: (vh + letterHeight) / 2 + 80
-        };
-        scatterItems.forEach(item => {
-            const rect = item.getBoundingClientRect();
-            let x = rect.left + rect.width / 2;
-            let y = rect.top + rect.height / 2;
-            const inZone = x > safeZone.left && x < safeZone.right &&
-                           y > safeZone.top && y < safeZone.bottom;
-            if (inZone) {
-                const cx = vw / 2;
-                const cy = vh / 2;
-                const angle = Math.atan2(y - cy, x - cx);
-                const radius = Math.max(letterWidth, letterHeight) / 2 + 140;
-                x = cx + Math.cos(angle) * radius;
-                y = cy + Math.sin(angle) * radius;
-                item.style.left = `${x}px`;
-                item.style.top = `${y}px`;
-            }
-        });
-        handleResponsivePolaroidToggle();
-    }
-
-    window.addEventListener('resize', repositionScatterOnResize, { passive: true });
-    window.addEventListener('orientationchange', repositionScatterOnResize);
-    window.addEventListener('resize', handleResponsivePolaroidToggle, { passive: true });
-    window.addEventListener('orientationchange', handleResponsivePolaroidToggle);
-    handleResponsivePolaroidToggle();
 
     // Navigation Events
     nextBtn.addEventListener('click', (e) => {
@@ -450,9 +245,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Scatter Item Click
+    let dragActive = false;
+    let dragMoved = false;
+    function getPoint(e) {
+        if (e.touches && e.touches[0]) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+    function attachDrag(item) {
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+        function start(e) {
+            const p = getPoint(e);
+            startX = p.x;
+            startY = p.y;
+            startLeft = parseFloat(item.style.left) || item.getBoundingClientRect().left;
+            startTop = parseFloat(item.style.top) || item.getBoundingClientRect().top;
+            dragActive = true;
+            dragMoved = false;
+            item.classList.add('dragging');
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', end);
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', end);
+            if (e.cancelable) e.preventDefault();
+        }
+        function move(e) {
+            if (!dragActive) return;
+            const p = getPoint(e);
+            const dx = p.x - startX;
+            const dy = p.y - startY;
+            if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+            const rect = item.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            let left = startLeft + dx;
+            let top = startTop + dy;
+            left = Math.max(w / 2 + 20, Math.min(vw - w / 2 - 20, left));
+            top = Math.max(h / 2 + 20, Math.min(vh - h / 2 - 20, top));
+            item.style.left = `${left}px`;
+            item.style.top = `${top}px`;
+            if (e.cancelable) e.preventDefault();
+        }
+        function end() {
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', end);
+            document.removeEventListener('touchmove', move);
+            document.removeEventListener('touchend', end);
+            item.classList.remove('dragging');
+            setTimeout(() => { dragActive = false; dragMoved = false; }, 0);
+        }
+        item.addEventListener('mousedown', start);
+        item.addEventListener('touchstart', start, { passive: false });
+    }
     scatterItems.forEach(item => {
+        attachDrag(item);
         item.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent bubbling
+            if (dragMoved) return;
             const img = item.querySelector('img');
             if (img) {
                 openLightboxModal(img.src);
